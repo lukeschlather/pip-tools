@@ -42,7 +42,7 @@ class RequirementSummary(object):
 
 
 class Resolver(object):
-    def __init__(self, constraints, repository, cache=None, prereleases=False, clear_caches=False, allow_unsafe=False):
+    def __init__(self, constraints, repository, cache=None, prereleases=False, clear_caches=False, allow_unsafe=False, preserve_range_pinning=False):
         """
         This class resolves a given set of constraints (a collection of
         InstallRequirement objects) by consulting the given Repository and the
@@ -58,6 +58,7 @@ class Resolver(object):
         self.clear_caches = clear_caches
         self.allow_unsafe = allow_unsafe
         self.unsafe_constraints = set()
+        self.preserve_range_pinning = preserve_range_pinning
 
     @property
     def constraints(self):

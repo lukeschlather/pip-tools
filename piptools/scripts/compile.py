@@ -63,11 +63,13 @@ class PipCommand(pip.basecommand.Command):
               help="Generate pip 8 style hashes in the resulting requirements file.")
 @click.option('--max-rounds', default=10,
               help="Maximum number of rounds before resolving the requirements aborts.")
+@click.option('--preserve-range-pinning', is_flag=True, default=False,
+              help="Preserve range pinned requirements in the initial set of dependencies.")
 @click.argument('src_files', nargs=-1, type=click.Path(exists=True, allow_dash=True))
 def cli(verbose, dry_run, pre, rebuild, find_links, index_url, extra_index_url,
         client_cert, trusted_host, header, index, emit_trusted_host, annotate,
         upgrade, upgrade_packages, output_file, allow_unsafe, generate_hashes,
-        src_files, max_rounds):
+        src_files, max_rounds, preserve_range_pinning):
     """Compiles requirements.txt from requirements.in specs."""
     log.verbose = verbose
 
@@ -230,14 +232,19 @@ def cli(verbose, dry_run, pre, rebuild, find_links, index_url, extra_index_url,
                           index_urls=repository.finder.index_urls,
                           trusted_hosts=pip_options.trusted_hosts,
                           format_control=repository.finder.format_control)
+
+    range_pinned_packages = (ireq for ireq in constraints if ireq.specifier)
+    primary_packages = {key_from_req(ireq.req) for ireq in constraints if not ireq.constraint}
+
     writer.write(results=results,
                  unsafe_requirements=resolver.unsafe_constraints,
                  reverse_dependencies=reverse_dependencies,
-                 primary_packages={key_from_req(ireq.req) for ireq in constraints if not ireq.constraint},
+                 primary_packages=primary_packages,
                  markers={key_from_req(ireq.req): ireq.markers
                           for ireq in constraints if ireq.markers},
                  hashes=hashes,
-                 allow_unsafe=allow_unsafe)
+                 allow_unsafe=allow_unsafe,
+                 range_pinned_packages=range_pinned_packages)
 
     if dry_run:
         log.warning('Dry-run, so nothing updated.')

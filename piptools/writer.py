@@ -82,7 +82,7 @@ class OutputWriter(object):
             yield ''
 
     def _iter_lines(self, results, unsafe_requirements, reverse_dependencies,
-                    primary_packages, markers, hashes, allow_unsafe=False):
+                    primary_packages, markers, hashes, allow_unsafe=False, range_pinned_packages=()):
         for line in self.write_header():
             yield line
         for line in self.write_flags():
@@ -92,12 +92,16 @@ class OutputWriter(object):
         packages = {r for r in results if r.name not in UNSAFE_PACKAGES}
 
         packages = sorted(packages, key=self._sort_key)
+        range_pinned_packages_by_name = {r.name: r for r in range_pinned_packages}
 
         for ireq in packages:
-            line = self._format_requirement(
-                ireq, reverse_dependencies, primary_packages,
-                markers.get(key_from_req(ireq.req)), hashes=hashes)
-            yield line
+            if ireq.name in range_pinned_packages_by_name:
+                yield str(range_pinned_packages_by_name[ireq.name].req)
+            else:
+                line = self._format_requirement(
+                    ireq, reverse_dependencies, primary_packages,
+                    markers.get(key_from_req(ireq.req)), hashes=hashes)
+                yield line
 
         if unsafe_requirements:
             unsafe_requirements = sorted(unsafe_requirements, key=self._sort_key)
@@ -116,14 +120,14 @@ class OutputWriter(object):
                     yield req
 
     def write(self, results, unsafe_requirements, reverse_dependencies,
-              primary_packages, markers, hashes, allow_unsafe=False):
+              primary_packages, markers, hashes, allow_unsafe=False, range_pinned_packages=()):
         with ExitStack() as stack:
             f = None
             if not self.dry_run:
                 f = stack.enter_context(AtomicSaver(self.dst_file))
 
             for line in self._iter_lines(results, unsafe_requirements, reverse_dependencies,
-                                         primary_packages, markers, hashes, allow_unsafe=allow_unsafe):
+                                         primary_packages, markers, hashes, allow_unsafe=allow_unsafe, range_pinned_packages=range_pinned_packages):
                 log.info(line)
                 if f:
                     f.write(unstyle(line).encode('utf-8'))
